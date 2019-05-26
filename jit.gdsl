@@ -1,0 +1,156 @@
+#!groovy
+
+
+// This pipeline is used for ESS on master
+
+node("${node}") {
+    notifyBuild('SD INTEGRATION TESTS STARTED')
+    def browser = params.browser
+    def description = "$browser, on branch: master, on node $NODE_NAME"
+    def reportsGenerated = true
+    def status = "PASSED"
+    currentBuild.setDescription("SD Regression Suite with browser type: " + description)
+
+    // Zalenium variables
+    def zaleniumContainerName = "zalenium-master-sd"
+    String hubPort = '4483'
+    String registryImage = 'docker-registry:41238/ci/zalenium:3.14.0b'
+    String elgaluSelenium = 'elgalu/selenium:3.14.0-p3'
+
+
+
+    try {
+
+        stage('Check and remove old sd Zalenium containers') {
+            try {
+                removeOldZaleniumContainers(zaleniumContainerName)
+            } catch (err) {
+                echo "$err"
+            }
+        }
+
+        stage('Source Control') {
+            checkout changelog: false,
+                    poll: false,
+                    scm: [$class                           : 'GitSCM',
+                          branches                         : [[name: '*/master']],
+                          doGenerateSubmoduleConfigurations: false,
+                          extensions                       : [[$class: 'WipeWorkspace']],
+                          submoduleCfg                     : [],
+                          userRemoteConfigs                : [[credentialsId: '336d4fc3-f420-4a3e-b96c-0d0f36ad12be', url: 'git@github.com:atypon/qa-automation-preprint.git']]]
+        }
+
+
+        stage('Create Zalenium container') {
+            sh "docker pull ${elgaluSelenium}"
+            sh "docker run -d --rm --name ${zaleniumContainerName} -p ${hubPort}:4444 -e ZALENIUM_EXTRA_JVM_PARAMS=\"-Dwebdriver.http.factory=apache\" -v /var/run/docker-ci.sock:/var/run/docker.sock -v /tmp/videos:/home/seluser/videos -v /dev/shm:/dev/shm --userns=host --env DBUS_SESSION_BUS_ADDRESS=/dev/null ${registryImage} --seleniumImageName ${elgaluSelenium} --desiredContainers 10 --maxDockerSeleniumContainers 20"
+        }
+
+
+        stage('Run ESS tests') {
+            dir("$WORKSPACE") {
+                withMaven(maven: 'mvn_3', options: [artifactsPublisher(disabled: true), junitPublisher(disabled: true)]) {
+                    sh "mvn clean install -Dcomponent=preprint -PTestNG -DskipTests=false -Dprop=preprint_test -Dgeb.env=${browser}"
+                }
+            }
+        }
+
+        stage ('Publish Hiptest Results') {
+            try {
+                echo "Publishing results back to HipTest platform using Docker"
+                withMaven(maven: 'mvn_3', options: [artifactsPublisher(disabled: true), junitPublisher(disabled: true)]) {
+                    script {
+                        sshagent(["336d4fc3-f420-4a3e-b96c-0d0f36ad12be"]) {
+                            dir("$WORKSPACE/target") {
+                                sh "docker run --rm -v ${WORKSPACE}/target/failsafe-reports/:/failsafe-reports:ro -v ${WORKSPACE}/target/test-classes/reports/preprint/:/preprint:ro hiptest/hiptest-publisher:v1.11.1 -c /preprint/hiptest-publisher-preprint.conf -p /failsafe-reports/TEST-*.xml"
+                            }
+                        }
+                    }
+                }
+            } catch (err) {
+                echo "Error in publishing results back to Hiptest: $err"
+            }
+        }
+
+        stage('Allure Report') {
+            try {
+                echo 'Publish Allure report'
+                allure includeProperties: false, jdk: '', results: [[path: 'target/allure-results']]
+            } catch (e) {
+                echo "Error in creating Allure report: $e"
+                reportsGenerated = false
+            }
+        }
+
+    } catch (err) {
+        // If there was an exception thrown, the build failed
+        status = currentBuild.result = "FAILURE"
+        throw err
+    } finally {
+        emailNotify("SD Integration Tests status: " + status)
+        notifyBuild(currentBuild.result)
+    }
+}
+
+
+/////////////////////////////// Methods ///////////////////////////////
+
+
+def notifyBuild(String buildStatus = 'STARTED') {
+//  build status of null means successful
+    buildStatus = buildStatus ?: 'SUCCESSFUL'
+
+//  Default values
+    def color = 'RED'
+    def colorCode = '#FF0000'
+    def subject = "${buildStatus}: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]'"
+    def summary = "${subject} (${env.BUILD_URL})"
+
+//     Override default values based on build status
+    if (buildStatus == 'STARTED') {
+        color = 'YELLOW'
+        colorCode = '#FFFF00'
+    } else if (buildStatus == 'SUCCESSFUL') {
+        color = 'GREEN'
+        colorCode = '#00FF00'
+    } else if (buildStatus.contains('RUNNING')) {
+        color = 'GREEN'
+        colorCode = '#00FF00'
+    } else if (buildStatus.contains('ABORTED')) {
+        color = 'GREY'
+        colorCode = '#C0C0C0'
+    } else {
+        color = 'RED'
+        colorCode = '#FF0000'
+    }
+
+}
+
+def emailNotify(String state) {//State can be Successful/Error
+    def mailBody = '${SCRIPT, template="groovy-html-inlined"}'
+    // Send notifications
+    emailext attachLog: true, compressLog: true, mimeType: 'text/html',
+            subject: "$state Project name -> ${env.JOB_NAME}",
+            body: mailBody,
+            to: 'ajamal@atypon.com'
+}
+
+def removeOldZaleniumContainers(String containerName) {
+    def running
+
+    try {
+        running = sh(returnStdout: true, script: "docker inspect -f {{.State.Running}} ${containerName}")
+    } catch (err) {
+        running = false
+    }
+
+    if (running) {
+        try {
+            sh "docker stop ${containerName}"
+            sh "docker rm ${containerName}"
+        } catch (err) {
+            echo err.getMessage()
+        }
+    }
+
+}
