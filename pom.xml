@@ -1,0 +1,356 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--suppress ALL -->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.atypon.sd</groupId>
+    <artifactId>qa-automation-sd</artifactId>
+    <version>1.0-SNAPSHOT</version>
+
+
+    <name>[atypon] - [automation] - [sd]</name>
+    <description>Content Suppression for testing id</description>
+
+    <!-- Shared version number properties including the core framework -->
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.javadoc.failOnError>false</maven.javadoc.failOnError>
+        <gmaven.plus.version>1.5</gmaven.plus.version>
+        <slf4j.version>1.7.15</slf4j.version>
+        <logback.version>1.2.3</logback.version>
+        <qa.automation.tool.version>2.0.74</qa.automation.tool.version>
+        <maven.resources.overwrite>true</maven.resources.overwrite>
+        <groovy.all.version>2.4.12</groovy.all.version>
+        <spring.agent.version>2.5.6</spring.agent.version>
+        <aspectj.version>1.7.4</aspectj.version>
+        <surefire.version>2.20.1</surefire.version>
+        <java.version>1.8</java.version>
+        <cucumber.maven.report.version>2.0.0</cucumber.maven.report.version>
+        <allure.maven.version>2.9</allure.maven.version>
+        <lombok.version>1.18.2</lombok.version>
+    </properties>
+
+    <scm>
+        <connection>scm:git@github.com:atypon/qa-automation-sd.git</connection>
+        <developerConnection>scm:git:git@github.com:atypon/qa-automation-sd.git</developerConnection>
+        <url>https://github.com/atypon/qa-automation-sd.git</url>
+        <tag>HEAD</tag>
+    </scm>
+
+
+    <developers>
+
+        <developer>
+            <name>ashraf jamal</name>
+            <id>ajamal</id>
+            <email>ajamal@atypon.com</email>
+            <organization>Atypon Intellectual Property Limited</organization>
+            <roles>
+                <role>SQA</role>
+            </roles>
+        </developer>
+    </developers>
+
+    <profiles>
+        <profile>
+            <id>TestNG</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <version>${surefire.version}</version>
+                        <configuration>
+                            <systemProperties>
+                                <property>
+                                    <name>allure.results.directory</name>
+                                    <value>${project.build.directory}/allure-results</value>
+                                </property>
+                                <property>
+                                    <name>allure.model.indentOutput</name>
+                                    <value>true</value>
+                                </property>
+                                <property>
+                                    <name>allure.link.issue.pattern</name>
+                                    <value>https://jira.atypon.com/browse/{}</value>
+                                </property>
+                                <property>
+                                    <name>allure.link.scenarios.pattern</name>
+                                    <value>
+                                        https://app.hiptest.com/projects/99280/test-plan/folders/{%folderId}/scenarios/{%scenarioId}
+                                    </value>
+                                </property>
+                                <property>
+                                    <name>video.folder</name>
+                                    <value>${project.build.directory}/video</value>
+                                </property>
+                            </systemProperties>
+                            <skipTests>false</skipTests>
+                            <testFailureIgnore>true</testFailureIgnore>
+                            <argLine>
+                                -javaagent:${settings.localRepository}/org/aspectj/aspectjweaver/${aspectj.version}/aspectjweaver-${aspectj.version}.jar
+                                -javaagent:${settings.localRepository}/org/springframework/spring-agent/${spring.agent.version}/spring-agent-${spring.agent.version}.jar
+                            </argLine>
+                            <reuseForks>true</reuseForks>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>it-tests</id>
+                                <phase>test</phase>
+                                <goals>
+                                    <goal>test</goal>
+                                </goals>
+                                <configuration>
+                                    <!-- Sets the VM argument line used when integration tests are run. -->
+                                    <suiteXmlFiles>
+                                        <suiteXmlFile>${project.build.testOutputDirectory}/testng/sd.xml</suiteXmlFile>
+                                    </suiteXmlFiles>
+                                </configuration>
+                            </execution>
+                        </executions>
+                        <dependencies>
+                            <dependency>
+                                <groupId>org.aspectj</groupId>
+                                <artifactId>aspectjweaver</artifactId>
+                                <version>${aspectj.version}</version>
+                            </dependency>
+                        </dependencies>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-project-info-reports-plugin</artifactId>
+                    <version>2.9</version>
+                </plugin>
+
+                <plugin>
+                    <groupId>io.qameta.allure</groupId>
+                    <artifactId>allure-maven</artifactId>
+                    <version>2.8</version>
+                    <configuration>
+                        <reportVersion>2.3.1</reportVersion>
+                    </configuration>
+                </plugin>
+
+                <!-- Compiles Java sources -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>2.5.1</version>
+                    <inherited>true</inherited>
+                    <configuration>
+                        <source>${java.version}</source>
+                        <target>${java.version}</target>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>3.0.1</version>
+                <configuration>
+                    <attach>true</attach>
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>install</phase>
+                        <goals>
+                            <goal>jar</goal>
+                            <goal>test-jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.0.2</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>test-jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+
+            <!-- This is a custom plugin for automation test environment setup -->
+            <plugin>
+                <groupId>com.atypon.passport</groupId>
+                <artifactId>qa-automation-maven</artifactId>
+                <version>${qa.automation.tool.version}</version>
+                <executions>
+90
+                            <skipTests>false</skipTes
+                    <execution>
+                        <id>transform-allure</id>
+                        <!-- Goal report executed in post-integration-test phase and correct xml files -->
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+
+            <!-- Copy js that provide HipTest info to Allure -->
+            <plugin>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.0.1</version>
+                <executions>
+                    <execution>
+                        <id>copy-resources</id>
+                        <!-- here the phase you need -->
+                        <phase>post-site</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${basedir}/target/site/allure-maven-plugin/plugins/cucumber
+                            </outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${basedir}/target/test-classes/reports/sd/</directory>
+                                    <filtering>true</filtering>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>copy-allure-properties</id>
+                        <!-- here the phase you need -->
+                        <phase>test</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${basedir}/target/allure-results</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${basedir}/target/test-classes/reports/sd/</directory>
+                                    <filtering>true</filtering>
+                                    <includes>
+                                        <include>environment.xml</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+
+            <!-- Compiles Groovy objects and generates Groovydocs- Javadocs -->
+            <plugin>
+                <groupId>org.codehaus.gmavenplus</groupId>
+                <artifactId>gmavenplus-plugin</artifactId>
+                <version>${gmaven.plus.version}</version>
+                <executions>
+                    <execution>
+                        <id>Compile</id>
+                        <goals>
+                            <goal>addSources</goal>
+                            <goal>addTestSources</goal>
+                            <goal>generateStubs</goal>
+                            <goal>compile</goal>
+                            <goal>testGenerateStubs</goal>
+                            <goal>testCompile</goal>
+                            <goal>removeStubs</goal>
+                            <goal>removeTestStubs</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.codehaus.groovy</groupId>
+                        <artifactId>groovy-all</artifactId>
+                        <version>${groovy.all.version}</version>
+                        <scope>runtime</scope>
+                    </dependency>
+                </dependencies>
+            </plugin>
+        </plugins>
+
+    </build>
+
+
+    <dependencies>
+        <dependency>
+            <groupId>org.codehaus.groovy</groupId>
+            <artifactId>groovy-all</artifactId>
+            <version>${groovy.all.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>${lombok.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.atypon.passport</groupId>
+            <artifactId>qa-automation-cucumber</artifactId>
+            <version>${qa.automation.tool.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.atypon.passport</groupId>
+            <artifactId>qa-automation-model</artifactId>
+            <version>${qa.automation.tool.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.atypon.passport</groupId>
+            <artifactId>qa-automation-web</artifactId>
+            <version>${qa.automation.tool.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>${slf4j.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>${logback.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+    </dependencies>
+
+    <repositories>
+        <!-- NOTE: Don't add additional repositories here!  Instead we need to configure our internal
+              repository to mirror the repository that you need -->
+        <repository>
+            <id>nexus</id>
+            <url>https://nexus.atypon.com/nexus</url>
+        </repository>
+    </repositories>
+
+    <distributionManagement>
+        <repository>
+            <id>nexus</id>
+            <name>Atypon Internal Maven Repository</name>
+            <url>https://nexus.atypon.com/nexus/content/repositories/passport</url>
+        </repository>
+    </distributionManagement>
+
+</project>
